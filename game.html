@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ducky vs Pup - Tic Tac Toe</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        /* Inline icons for title and player labels */
+        .title-icon { width: 48px; height: 48px; object-fit: contain; vertical-align: middle; margin: 0 8px; }
+        .inline-icon { width: 28px; height: 28px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
+
+        .game-container { text-align: center; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 20px; padding: 40px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .players { display: flex; justify-content: space-between; margin: 20px 0; font-size: 1.2rem; font-weight: bold; }
+        .player { padding: 10px 20px; background: rgba(255,255,255,0.2); border-radius: 10px; border: 2px solid transparent; transition: all 0.3s ease; }
+        .player.active { border-color: #ffeb3b; background: rgba(255,235,59,0.3); }
+
+        .board { display: grid; grid-template-columns: repeat(3, 120px); grid-template-rows: repeat(3, 120px); gap: 10px; margin: 30px auto; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 15px; }
+
+        .cell {
+            width: 120px; height: 120px;
+            /* Default: purple tiles (match page BG) */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid #8d79e6; border-radius: 10px;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
+            transition: all 0.3s ease;
+            /* Neutral depth suitable for purple */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.22), inset 0 2px 6px rgba(255,255,255,0.25);
+        }
+        .cell:hover:not(.occupied) { filter: brightness(1.06) saturate(1.02); transform: scale(1.05); }
+        .cell img { max-width: 80px; max-height: 80px; object-fit: contain; }
+        .cell.occupied { cursor: not-allowed; }
+
+        /* Winning tiles: switch to the previous gold style */
+        .cell.win {
+            background: linear-gradient(145deg, #FFF6CC 0%, #FFE6A1 50%, #FAD77B 100%);
+            border-color: #d7bf72;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.22), inset 0 2px 6px rgba(255,255,255,0.35), inset 0 -3px 8px rgba(214,160,28,0.2);
+        }
+
+        .status { font-size: 1.5rem; font-weight: bold; margin: 20px 0; min-height: 60px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 15px; }
+        /* New Game button — gold styling to match winning tiles */
+        .reset-btn {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            background: linear-gradient(145deg, #FFF6CC 0%, #FFE6A1 50%, #FAD77B 100%);
+            color: #5a4a1a;
+            border: 2px solid #d7bf72;
+            border-radius: 28px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 6px 16px rgba(214,160,28,0.35),
+                        inset 0 2px 6px rgba(255,255,255,0.35),
+                        inset 0 -3px 8px rgba(214,160,28,0.25);
+            text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+        }
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+            box-shadow: 0 10px 22px rgba(214,160,28,0.5),
+                        inset 0 2px 6px rgba(255,255,255,0.4),
+                        inset 0 -3px 8px rgba(214,160,28,0.3);
+        }
+        .reset-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(214,160,28,0.45),
+                        inset 0 2px 6px rgba(0,0,0,0.12);
+        }
+
+        .score { display: flex; justify-content: space-around; margin: 20px 0; font-size: 1.1rem; }
+        .score div { background: rgba(0,0,0,0.2); padding: 10px 15px; border-radius: 10px; min-width: 100px; }
+
+        .victory-message { animation: bounce 0.6s ease-in-out; color: #ffeb3b; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        @keyframes bounce { 0%,20%,50%,80%,100%{transform:translateY(0);} 40%{transform:translateY(-10px);} 60%{transform:translateY(-5px);} }
+        .thinking { color: #ffa726; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>
+            <img class="title-icon" src="assets/headducky.png" alt="Ducky icon">
+            Ducky vs Pup
+            <img class="title-icon" src="assets/headpup.png" alt="Pup icon">
+        </h1>
+
+        <div class="players">
+            <div class="player" id="ducky-status"><img class="inline-icon" src="assets/headducky.png" alt="Ducky icon"> Ducky (X)</div>
+            <div class="player" id="pup-status"><img class="inline-icon" src="assets/headpup.png" alt="Pup icon"> Pup (O)</div>
+        </div>
+
+        <div class="score">
+            <div>Ducky: <span id="ducky-score">0</span></div>
+            <div>Draws: <span id="draw-score">0</span></div>
+            <div>Pup: <span id="pup-score">0</span></div>
+        </div>
+
+        <div class="board" id="board">
+            <button class="cell" data-index="0"></button>
+            <button class="cell" data-index="1"></button>
+            <button class="cell" data-index="2"></button>
+            <button class="cell" data-index="3"></button>
+            <button class="cell" data-index="4"></button>
+            <button class="cell" data-index="5"></button>
+            <button class="cell" data-index="6"></button>
+            <button class="cell" data-index="7"></button>
+            <button class="cell" data-index="8"></button>
+        </div>
+
+        <div class="status" id="status">Ducky's turn - Click a cell to play!</div>
+        <button class="reset-btn" onclick="resetGame()">New Game</button>
+    </div>
+
+    <script>
+        const DUCKY_IMAGE = 'assets/headducky.png';
+        const PUP_IMAGE   = 'assets/headpup.png';
+
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X'; // X = Ducky, O = Pup
+        let gameActive = true;
+        let scores = { ducky: 0, pup: 0, draw: 0 };
+
+        const cells = document.querySelectorAll('.cell');
+        const status = document.getElementById('status');
+        const duckyStatus = document.getElementById('ducky-status');
+        const pupStatus = document.getElementById('pup-status');
+
+        const winningConditions = [
+            [0,1,2], [3,4,5], [6,7,8],
+            [0,3,6], [1,4,7], [2,5,8],
+            [0,4,8], [2,4,6]
+        ];
+
+        function initGame() {
+            cells.forEach((cell, index) => {
+                cell.addEventListener('click', () => handleCellClick(index));
+            });
+            updatePlayerStatus();
+            loadScores();
+        }
+
+        function handleCellClick(index) {
+            if (board[index] !== '' || !gameActive || currentPlayer === 'O') return;
+            makeMove(index, 'X');
+            if (gameActive) setTimeout(pupMove, 500);
+        }
+
+        function makeMove(index, player) {
+            board[index] = player;
+            const cell = cells[index];
+            cell.classList.add('occupied');
+            const img = document.createElement('img');
+            img.src = player === 'X' ? DUCKY_IMAGE : PUP_IMAGE;
+            img.alt = player === 'X' ? 'Ducky X' : 'Pup O';
+            cell.appendChild(img);
+
+            const winLine = findWinningLine();
+            if (winLine) {
+                gameActive = false;
+                // Highlight winning squares only by color change
+                winLine.forEach(i => cells[i].classList.add('win'));
+                const winner = player === 'X' ? 'Ducky' : 'Pup';
+                if (winner === 'Pup') {
+                    status.innerHTML = '<div class="victory-message">🎉Shake Shake Drop Pants🎉<br>Pup Won no Cut Cut for 2 weeks!</div>';
+                    scores.pup++;
+                } else {
+                    status.innerHTML = `<div class="victory-message">${winner} wins! 🎉</div>`;
+                    scores.ducky++;
+                }
+                saveScores();
+                updateScoreDisplay();
+                return;
+            }
+
+            if (board.every(cell => cell !== '')) {
+                gameActive = false;
+                status.innerHTML = "It's a draw! 🤝<br>All free!";
+                scores.draw++; saveScores(); updateScoreDisplay();
+                return;
+            }
+
+            currentPlayer = player === 'X' ? 'O' : 'X';
+            updatePlayerStatus();
+        }
+
+        function pupMove() {
+            if (!gameActive) return;
+            status.innerHTML = '<div class="thinking">Pup is thinking...</div>';
+            setTimeout(() => {
+                const bestMove = minimax(board, 'O').index;
+                makeMove(bestMove, 'O');
+            }, 800);
+        }
+
+        function minimax(newBoard, player) {
+            const available = newBoard.map((c,i)=>c===''?i:null).filter(i=>i!==null);
+            if (checkWinnerForBoard(newBoard, 'X')) return { score: -10 };
+            if (checkWinnerForBoard(newBoard, 'O')) return { score: 10 };
+            if (available.length === 0) return { score: 0 };
+
+            const moves = [];
+            for (const idx of available) {
+                const move = { index: idx };
+                newBoard[idx] = player;
+                move.score = minimax(newBoard, player === 'O' ? 'X' : 'O').score;
+                newBoard[idx] = '';
+                moves.push(move);
+            }
+
+            let best = 0;
+            if (player === 'O') {
+                let bestScore = -Infinity;
+                for (let i=0;i<moves.length;i++) if (moves[i].score > bestScore) { bestScore = moves[i].score; best = i; }
+            } else {
+                let bestScore = Infinity;
+                for (let i=0;i<moves.length;i++) if (moves[i].score < bestScore) { bestScore = moves[i].score; best = i; }
+            }
+            return moves[best];
+        }
+
+        function checkWinnerForBoard(boardState, player) {
+            return winningConditions.some(cond => cond.every(i => boardState[i] === player));
+        }
+
+        function findWinningLine() {
+            for (const cond of winningConditions) {
+                const [a,b,c] = cond;
+                if (board[a] !== '' && board[a] === board[b] && board[a] === board[c]) return cond;
+            }
+            return null;
+        }
+
+        function updatePlayerStatus() {
+            duckyStatus.classList.remove('active');
+            pupStatus.classList.remove('active');
+            if (currentPlayer === 'X') { duckyStatus.classList.add('active'); status.textContent = "Ducky's turn - Click a cell!"; }
+            else { pupStatus.classList.add('active'); status.textContent = "Pup's turn"; }
+        }
+
+        function resetGame() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            gameActive = true;
+            cells.forEach(cell => { cell.innerHTML = ''; cell.classList.remove('occupied'); cell.classList.remove('win'); });
+            updatePlayerStatus();
+        }
+
+        function saveScores() { /* placeholder for persistence */ }
+        function loadScores() { updateScoreDisplay(); }
+        function updateScoreDisplay() {
+            document.getElementById('ducky-score').textContent = scores.ducky;
+            document.getElementById('pup-score').textContent = scores.pup;
+            document.getElementById('draw-score').textContent = scores.draw;
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
+
